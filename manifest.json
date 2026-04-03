@@ -1,0 +1,10 @@
+{
+  "id": "mobile-vault-scripts",
+  "name": "Mobile Vault Scripts",
+  "version": "1.0.0",
+  "minAppVersion": "1.5.0",
+  "description": "Runs your vault maintenance scripts as Obsidian commands, including mobile-safe voice note consolidation, empty file cleanup, and completed task removal.",
+  "author": "OpenAI",
+  "authorUrl": "",
+  "isDesktopOnly": false
+}
