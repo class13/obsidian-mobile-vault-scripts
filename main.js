@@ -171,6 +171,14 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
       }
     });
 
+    this.addCommand({
+      id: "move-overdue-task-due-dates-to-today",
+      name: "Move overdue task due dates to today",
+      callback: async () => {
+        await this.moveOverdueTaskDueDatesToToday();
+      }
+    });
+
     this.addSettingTab(new MobileVaultScriptsSettingTab(this.app, this));
   }
 
@@ -371,6 +379,63 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
     };
   }
 
+  getTodayDateString() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = `${now.getMonth() + 1}`.padStart(2, "0");
+    const day = `${now.getDate()}`.padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  isIncompleteTaskLine(line) {
+    const match = line.match(/^\s*[-*]\s+\[([^\]])\]/);
+    if (!match) {
+      return false;
+    }
+    return match[1].toLowerCase() !== "x";
+  }
+
+  updateOverdueTaskLineDueDate(line, today) {
+    if (!this.isIncompleteTaskLine(line)) {
+      return { updated: line, changed: false };
+    }
+
+    let changed = false;
+    let updated = line.replace(/(📅\s*)(\d{4}-\d{2}-\d{2})/g, (match, prefix, dueDate) => {
+      if (dueDate < today) {
+        changed = true;
+        return `${prefix}${today}`;
+      }
+      return match;
+    });
+
+    updated = updated.replace(/(due::\s*)(\d{4}-\d{2}-\d{2})/gi, (match, prefix, dueDate) => {
+      if (dueDate < today) {
+        changed = true;
+        return `${prefix}${today}`;
+      }
+      return match;
+    });
+
+    return { updated, changed };
+  }
+
+  updateOverdueTaskDueDates(content, today) {
+    let changedTasks = 0;
+    const updated = content
+      .split(/\r?\n/)
+      .map((line) => {
+        const result = this.updateOverdueTaskLineDueDate(line, today);
+        if (result.changed) {
+          changedTasks += 1;
+        }
+        return result.updated;
+      })
+      .join("\n");
+
+    return { updated, changedTasks };
+  }
+
   async removeCompletedTasks() {
     const affectedFiles = [];
     let totalRemoved = 0;
@@ -412,5 +477,49 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
     }
 
     new Notice(`Removed ${totalRemoved} completed task(s) from ${affectedFiles.length} file(s).`, 8000);
+  }
+
+  async moveOverdueTaskDueDatesToToday() {
+    const today = this.getTodayDateString();
+    const affectedFiles = [];
+    let totalUpdated = 0;
+
+    for (const file of this.app.vault.getMarkdownFiles()) {
+      if (!this.isManagedVaultPath(file.path)) {
+        continue;
+      }
+
+      const original = await this.app.vault.cachedRead(file);
+      const { updated, changedTasks } = this.updateOverdueTaskDueDates(original, today);
+      if (!changedTasks) {
+        continue;
+      }
+
+      affectedFiles.push({ file, updated });
+      totalUpdated += changedTasks;
+    }
+
+    if (!affectedFiles.length) {
+      new Notice(`No overdue incomplete tasks due before ${today} found.`);
+      return;
+    }
+
+    const preview = affectedFiles.slice(0, 5).map(({ file }) => file.path).join("\n");
+    const extra = affectedFiles.length > 5 ? `\nAnd ${affectedFiles.length - 5} more.` : "";
+    const confirmed = await new ConfirmModal(this.app, {
+      title: "Move overdue task due dates to today?",
+      message: `This will change the due date to ${today} for ${totalUpdated} incomplete task(s) in ${affectedFiles.length} markdown file(s).\n\n${preview}${extra}`,
+      ctaText: "Update"
+    }).waitForResult();
+
+    if (!confirmed) {
+      return;
+    }
+
+    for (const { file, updated } of affectedFiles) {
+      await this.app.vault.modify(file, updated);
+    }
+
+    new Notice(`Updated ${totalUpdated} overdue task due date(s) to ${today} in ${affectedFiles.length} file(s).`, 8000);
   }
 };
