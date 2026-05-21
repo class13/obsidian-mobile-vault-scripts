@@ -9,6 +9,7 @@ It currently supports:
 - Deleting empty or whitespace-only files
 - Removing completed Markdown tasks
 - Moving overdue task due dates to today
+- Assigning missing task due dates to today
 
 ## What It Does
 
@@ -56,6 +57,16 @@ Supported due-date formats:
 
 Only incomplete tasks are changed. Completed tasks are left alone.
 
+### Missing due-date assignment
+
+The plugin can also add today’s date to incomplete Markdown task lines that do not already have a due date.
+
+It appends the due date in this format:
+
+- `📅 YYYY-MM-DD`
+
+Tasks that already include either `📅 YYYY-MM-DD` or `due:: YYYY-MM-DD` are left unchanged.
+
 ## Commands
 
 After enabling the plugin in Obsidian, these commands are available from the command palette:
@@ -65,6 +76,7 @@ After enabling the plugin in Obsidian, these commands are available from the com
 - `Mobile Vault Scripts: Delete empty or whitespace-only files`
 - `Mobile Vault Scripts: Remove completed tasks from markdown files`
 - `Mobile Vault Scripts: Move overdue task due dates to today`
+- `Mobile Vault Scripts: Assign missing task due dates to today`
 
 Each destructive action shows a confirmation modal before changes are applied.
 
@@ -115,3 +127,4 @@ There is no build step configured in this repository at the moment.
 - Empty-file cleanup can affect non-Markdown text files if they are blank or whitespace-only.
 - Completed-task cleanup only removes lines beginning with `- [x]`; other completed task syntaxes are not currently removed.
 - Overdue due-date updates compare dates in `YYYY-MM-DD` format and only modify dates earlier than today.
+- Missing due-date assignment appends `📅 YYYY-MM-DD` to incomplete tasks that have no supported due-date marker.

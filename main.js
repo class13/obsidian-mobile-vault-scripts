@@ -179,6 +179,14 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
       }
     });
 
+    this.addCommand({
+      id: "assign-missing-task-due-dates-to-today",
+      name: "Assign missing task due dates to today",
+      callback: async () => {
+        await this.assignMissingTaskDueDatesToToday();
+      }
+    });
+
     this.addSettingTab(new MobileVaultScriptsSettingTab(this.app, this));
   }
 
@@ -395,6 +403,10 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
     return match[1].toLowerCase() !== "x";
   }
 
+  hasTaskDueDate(line) {
+    return /(📅\s*\d{4}-\d{2}-\d{2})|(due::\s*\d{4}-\d{2}-\d{2})/i.test(line);
+  }
+
   updateOverdueTaskLineDueDate(line, today) {
     if (!this.isIncompleteTaskLine(line)) {
       return { updated: line, changed: false };
@@ -420,12 +432,36 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
     return { updated, changed };
   }
 
+  addDueDateToUndatedTaskLine(line, today) {
+    if (!this.isIncompleteTaskLine(line) || this.hasTaskDueDate(line)) {
+      return { updated: line, changed: false };
+    }
+
+    return { updated: `${line} 📅 ${today}`, changed: true };
+  }
+
   updateOverdueTaskDueDates(content, today) {
     let changedTasks = 0;
     const updated = content
       .split(/\r?\n/)
       .map((line) => {
         const result = this.updateOverdueTaskLineDueDate(line, today);
+        if (result.changed) {
+          changedTasks += 1;
+        }
+        return result.updated;
+      })
+      .join("\n");
+
+    return { updated, changedTasks };
+  }
+
+  assignMissingTaskDueDates(content, today) {
+    let changedTasks = 0;
+    const updated = content
+      .split(/\r?\n/)
+      .map((line) => {
+        const result = this.addDueDateToUndatedTaskLine(line, today);
         if (result.changed) {
           changedTasks += 1;
         }
@@ -521,5 +557,49 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
     }
 
     new Notice(`Updated ${totalUpdated} overdue task due date(s) to ${today} in ${affectedFiles.length} file(s).`, 8000);
+  }
+
+  async assignMissingTaskDueDatesToToday() {
+    const today = this.getTodayDateString();
+    const affectedFiles = [];
+    let totalUpdated = 0;
+
+    for (const file of this.app.vault.getMarkdownFiles()) {
+      if (!this.isManagedVaultPath(file.path)) {
+        continue;
+      }
+
+      const original = await this.app.vault.cachedRead(file);
+      const { updated, changedTasks } = this.assignMissingTaskDueDates(original, today);
+      if (!changedTasks) {
+        continue;
+      }
+
+      affectedFiles.push({ file, updated });
+      totalUpdated += changedTasks;
+    }
+
+    if (!affectedFiles.length) {
+      new Notice(`No incomplete tasks without due dates found for ${today}.`);
+      return;
+    }
+
+    const preview = affectedFiles.slice(0, 5).map(({ file }) => file.path).join("\n");
+    const extra = affectedFiles.length > 5 ? `\nAnd ${affectedFiles.length - 5} more.` : "";
+    const confirmed = await new ConfirmModal(this.app, {
+      title: "Assign missing task due dates to today?",
+      message: `This will add the due date ${today} to ${totalUpdated} incomplete task(s) in ${affectedFiles.length} markdown file(s).\n\n${preview}${extra}`,
+      ctaText: "Update"
+    }).waitForResult();
+
+    if (!confirmed) {
+      return;
+    }
+
+    for (const { file, updated } of affectedFiles) {
+      await this.app.vault.modify(file, updated);
+    }
+
+    new Notice(`Assigned ${today} to ${totalUpdated} incomplete task due date(s) in ${affectedFiles.length} file(s).`, 8000);
   }
 };
