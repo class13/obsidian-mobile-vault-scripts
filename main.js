@@ -143,15 +143,7 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
       id: "consolidate-voice-notes",
       name: "Consolidate voice notes into daily notes",
       callback: async () => {
-        await this.runVoiceNoteConsolidation(false);
-      }
-    });
-
-    this.addCommand({
-      id: "consolidate-voice-notes-and-cleanup",
-      name: "Consolidate voice notes and delete processed files",
-      callback: async () => {
-        await this.runVoiceNoteConsolidation(true);
+        await this.runVoiceNoteConsolidation();
       }
     });
 
@@ -263,7 +255,7 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
       .sort((a, b) => a.path.localeCompare(b.path));
   }
 
-  async runVoiceNoteConsolidation(cleanup) {
+  async runVoiceNoteConsolidation() {
     const voiceNoteFiles = this.getVoiceNoteFiles();
     if (voiceNoteFiles === null) {
       new Notice(`Voice notes folder not found: ${this.settings.voiceNotesFolder}`);
@@ -276,11 +268,9 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
     }
 
     const confirmed = await new ConfirmModal(this.app, {
-      title: cleanup ? "Consolidate and delete voice notes?" : "Consolidate voice notes?",
-      message: cleanup
-        ? `Found ${voiceNoteFiles.length} voice note file(s).\nProcessed files will be appended to daily notes and then deleted.`
-        : `Found ${voiceNoteFiles.length} voice note file(s).\nTheir contents will be appended to daily notes.`,
-      ctaText: cleanup ? "Run and Delete" : "Run"
+      title: "Consolidate and delete voice notes?",
+      message: `Found ${voiceNoteFiles.length} voice note file(s).\nProcessed files will be appended to daily notes and then deleted.`,
+      ctaText: "Run and Delete"
     }).waitForResult();
 
     if (!confirmed) {
@@ -309,14 +299,11 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
       processedFiles.push(file);
     }
 
-    if (cleanup) {
-      for (const file of processedFiles) {
-        await this.app.vault.trash(file, false);
-      }
+    for (const file of processedFiles) {
+      await this.app.vault.trash(file, false);
     }
 
-    const cleanupSuffix = cleanup ? ` Deleted ${processedFiles.length} processed file(s).` : "";
-    new Notice(`Voice notes done. Processed ${processed}, skipped ${skipped}.${cleanupSuffix}`, 8000);
+    new Notice(`Voice notes done. Processed ${processed}, skipped ${skipped}. Deleted ${processedFiles.length} processed file(s).`, 8000);
   }
 
   isTextCandidate(file) {
