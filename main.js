@@ -143,6 +143,7 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
     this.addCommand({
       id: "consolidate-voice-notes",
       name: "Consolidate voice notes into daily notes",
+      icon: "microphone",
       callback: async () => {
         await this.runVoiceNoteConsolidation();
       }
@@ -151,6 +152,7 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
     this.addCommand({
       id: "delete-empty-files",
       name: "Delete empty or whitespace-only files",
+      icon: "file-x",
       callback: async () => {
         await this.deleteEmptyFiles();
       }
@@ -159,6 +161,7 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
     this.addCommand({
       id: "remove-completed-tasks",
       name: "Remove completed tasks from markdown files",
+      icon: "check-check",
       callback: async () => {
         await this.removeCompletedTasks();
       }
@@ -167,6 +170,7 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
     this.addCommand({
       id: "move-overdue-task-due-dates-to-today",
       name: "Move overdue task due dates to today",
+      icon: "calendar-clock",
       callback: async () => {
         await this.moveOverdueTaskDueDatesToToday();
       }
@@ -175,6 +179,7 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
     this.addCommand({
       id: "assign-missing-task-due-dates-to-today",
       name: "Assign missing task due dates to today",
+      icon: "calendar-plus",
       callback: async () => {
         await this.assignMissingTaskDueDatesToToday();
       }
@@ -183,6 +188,7 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
     this.addCommand({
       id: "sort-focused-task-list",
       name: "Sort task list",
+      icon: "arrow-down-up",
       editorCallback: (editor, view) => {
         this.sortFocusedTaskList(editor, view);
       }
