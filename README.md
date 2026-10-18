@@ -77,8 +77,11 @@ After enabling the plugin in Obsidian, these commands are available from the com
 - `Mobile Vault Scripts: Remove completed tasks from markdown files`
 - `Mobile Vault Scripts: Move overdue task due dates to today`
 - `Mobile Vault Scripts: Assign missing task due dates to today`
+- `Mobile Vault Scripts: Sort task list`
 
 Each destructive action shows a confirmation modal before changes are applied.
+
+The focused task-list command works on the uninterrupted block of `- [ ]` and `- [x]` lines containing the cursor. It stably moves completed tasks to the top and incomplete tasks to the bottom; other lines are boundaries and are not changed.
 
 ## Settings
 

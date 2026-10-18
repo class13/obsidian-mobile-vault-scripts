@@ -3,6 +3,7 @@ const {
   Notice,
   Plugin,
   PluginSettingTab,
+  MarkdownView,
   Setting,
   TFile,
   TFolder
@@ -184,6 +185,14 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
       name: "Assign missing task due dates to today",
       callback: async () => {
         await this.assignMissingTaskDueDatesToToday();
+      }
+    });
+
+    this.addCommand({
+      id: "sort-focused-task-list",
+      name: "Sort task list",
+      editorCallback: (editor, view) => {
+        this.sortFocusedTaskList(editor, view);
       }
     });
 
@@ -401,6 +410,71 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
       return false;
     }
     return match[1].toLowerCase() !== "x";
+  }
+
+  getTaskStatus(line) {
+    const match = line.match(/^\s*-\s+\[([ xX])\]/);
+    if (!match) {
+      return null;
+    }
+    return match[1].toLowerCase() === "x" ? "completed" : "incomplete";
+  }
+
+  sortFocusedTaskList(editor, view) {
+    if (!(view instanceof MarkdownView)) {
+      new Notice("Focus a Markdown task list first.");
+      return;
+    }
+
+    const cursor = editor.getCursor();
+    const currentLine = editor.getLine(cursor.line);
+    if (!this.getTaskStatus(currentLine)) {
+      new Notice("The focused line is not a task.");
+      return;
+    }
+
+    let startLine = cursor.line;
+    while (startLine > 0 && this.getTaskStatus(editor.getLine(startLine - 1))) {
+      startLine -= 1;
+    }
+
+    let endLine = cursor.line;
+    while (endLine < editor.lastLine() && this.getTaskStatus(editor.getLine(endLine + 1))) {
+      endLine += 1;
+    }
+
+    const taskLines = [];
+    for (let lineNumber = startLine; lineNumber <= endLine; lineNumber += 1) {
+      const line = editor.getLine(lineNumber);
+      taskLines.push({
+        line,
+        originalIndex: lineNumber - startLine,
+        status: this.getTaskStatus(line)
+      });
+    }
+
+    const sortedLines = [
+      ...taskLines.filter((task) => task.status === "completed"),
+      ...taskLines.filter((task) => task.status === "incomplete")
+    ];
+    const changed = sortedLines.some((task, index) => task.originalIndex !== index);
+    if (!changed) {
+      new Notice("This task list is already sorted.");
+      return;
+    }
+
+    const replacement = sortedLines.map((task) => task.line).join("\n");
+    editor.replaceRange(
+      replacement,
+      { line: startLine, ch: 0 },
+      { line: endLine, ch: editor.getLine(endLine).length }
+    );
+
+    const focusedTask = sortedLines.findIndex((task) => task.originalIndex === cursor.line - startLine);
+    const newCursorLine = startLine + focusedTask;
+    const newCursorCh = Math.min(cursor.ch, editor.getLine(newCursorLine).length);
+    editor.setCursor({ line: newCursorLine, ch: newCursorCh });
+    new Notice("Sorted focused task list: completed tasks first.");
   }
 
   hasTaskDueDate(line) {
