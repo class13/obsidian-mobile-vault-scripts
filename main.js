@@ -544,15 +544,12 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
       return;
     }
 
-    if (!this.hasTaskDueDate(line)) {
-      new Notice("The focused task has no supported due date.");
-      return;
-    }
-
     const tomorrow = this.getTomorrowDateString();
-    const updated = line
-      .replace(/(📅\s*)\d{4}-\d{2}-\d{2}/g, `$1${tomorrow}`)
-      .replace(/(due::\s*)\d{4}-\d{2}-\d{2}/gi, `$1${tomorrow}`);
+    const updated = this.hasTaskDueDate(line)
+      ? line
+          .replace(/(📅\s*)\d{4}-\d{2}-\d{2}/g, `$1${tomorrow}`)
+          .replace(/(due::\s*)\d{4}-\d{2}-\d{2}/gi, `$1${tomorrow}`)
+      : `${line} 📅 ${tomorrow}`;
 
     editor.replaceRange(
       updated,
@@ -563,7 +560,7 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
       line: cursor.line,
       ch: Math.min(cursor.ch, updated.length)
     });
-    new Notice(`Moved task due date to ${tomorrow}.`);
+    new Notice(`Set task due date to ${tomorrow}.`);
   }
 
   updateOverdueTaskDueDates(content, today) {
