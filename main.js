@@ -186,6 +186,15 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
     });
 
     this.addCommand({
+      id: "move-focused-task-due-date-to-tomorrow",
+      name: "Move task due date to tomorrow",
+      icon: "calendar-arrow-up",
+      editorCallback: (editor, view) => {
+        this.moveFocusedTaskDueDateToTomorrow(editor, view);
+      }
+    });
+
+    this.addCommand({
       id: "sort-focused-task-list",
       name: "Sort task list",
       icon: "arrow-down-up",
@@ -397,6 +406,15 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
     return `${year}-${month}-${day}`;
   }
 
+  getTomorrowDateString() {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const year = tomorrow.getFullYear();
+    const month = `${tomorrow.getMonth() + 1}`.padStart(2, "0");
+    const day = `${tomorrow.getDate()}`.padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
   isIncompleteTaskLine(line) {
     const match = line.match(/^\s*[-*]\s+\[([^\]])\]/);
     if (!match) {
@@ -511,6 +529,41 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
     }
 
     return { updated: `${line} 📅 ${today}`, changed: true };
+  }
+
+  moveFocusedTaskDueDateToTomorrow(editor, view) {
+    if (!(view instanceof MarkdownView)) {
+      new Notice("Focus a Markdown task first.");
+      return;
+    }
+
+    const cursor = editor.getCursor();
+    const line = editor.getLine(cursor.line);
+    if (!this.getTaskStatus(line)) {
+      new Notice("The focused line is not a task.");
+      return;
+    }
+
+    if (!this.hasTaskDueDate(line)) {
+      new Notice("The focused task has no supported due date.");
+      return;
+    }
+
+    const tomorrow = this.getTomorrowDateString();
+    const updated = line
+      .replace(/(📅\s*)\d{4}-\d{2}-\d{2}/g, `$1${tomorrow}`)
+      .replace(/(due::\s*)\d{4}-\d{2}-\d{2}/gi, `$1${tomorrow}`);
+
+    editor.replaceRange(
+      updated,
+      { line: cursor.line, ch: 0 },
+      { line: cursor.line, ch: line.length }
+    );
+    editor.setCursor({
+      line: cursor.line,
+      ch: Math.min(cursor.ch, updated.length)
+    });
+    new Notice(`Moved task due date to ${tomorrow}.`);
   }
 
   updateOverdueTaskDueDates(content, today) {
