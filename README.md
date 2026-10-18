@@ -5,7 +5,7 @@ An Obsidian plugin that exposes a small set of vault-maintenance commands design
 It currently supports:
 
 - Consolidating voice note files into daily notes
-- Optionally deleting processed voice note files after consolidation
+- Deleting processed voice note files after consolidation
 - Deleting empty or whitespace-only files
 - Removing completed Markdown tasks
 - Moving overdue task due dates to today
@@ -72,7 +72,6 @@ Tasks that already include either `📅 YYYY-MM-DD` or `due:: YYYY-MM-DD` are le
 After enabling the plugin in Obsidian, these commands are available from the command palette:
 
 - `Mobile Vault Scripts: Consolidate voice notes into daily notes`
-- `Mobile Vault Scripts: Consolidate voice notes and delete processed files`
 - `Mobile Vault Scripts: Delete empty or whitespace-only files`
 - `Mobile Vault Scripts: Remove completed tasks from markdown files`
 - `Mobile Vault Scripts: Move overdue task due dates to today`
