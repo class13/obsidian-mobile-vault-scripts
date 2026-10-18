@@ -80,7 +80,7 @@ After enabling the plugin in Obsidian, these commands are available from the com
 
 Each destructive action shows a confirmation modal before changes are applied.
 
-The focused task-list command works on the uninterrupted block of `- [ ]` and `- [x]` lines containing the cursor. It stably moves completed tasks to the top and incomplete tasks to the bottom; other lines are boundaries and are not changed.
+The focused task-list command works on the uninterrupted block of `- [ ]` and `- [x]` lines containing the cursor. It stably orders completed tasks first, incomplete tasks with a supported due date second, and other incomplete tasks last. Other lines are boundaries and are not changed.
 
 ## Settings
 

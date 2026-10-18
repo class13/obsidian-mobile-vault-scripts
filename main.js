@@ -442,13 +442,19 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
       taskLines.push({
         line,
         originalIndex: lineNumber - startLine,
-        status: this.getTaskStatus(line)
+        status: this.getTaskStatus(line),
+        priority: this.getTaskStatus(line) === "completed"
+          ? 0
+          : this.hasTaskDueDate(line)
+            ? 1
+            : 2
       });
     }
 
     const sortedLines = [
-      ...taskLines.filter((task) => task.status === "completed"),
-      ...taskLines.filter((task) => task.status === "incomplete")
+      ...taskLines.filter((task) => task.priority === 0),
+      ...taskLines.filter((task) => task.priority === 1),
+      ...taskLines.filter((task) => task.priority === 2)
     ];
     const changed = sortedLines.some((task, index) => task.originalIndex !== index);
     if (!changed) {
@@ -467,7 +473,7 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
     const newCursorLine = startLine + focusedTask;
     const newCursorCh = Math.min(cursor.ch, editor.getLine(newCursorLine).length);
     editor.setCursor({ line: newCursorLine, ch: newCursorCh });
-    new Notice("Sorted focused task list: completed tasks first.");
+    new Notice("Sorted task list: done, due, then other tasks.");
   }
 
   hasTaskDueDate(line) {
