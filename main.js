@@ -204,6 +204,15 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
     });
 
     this.addCommand({
+      id: "pull-tasks-due-today-into-daily-note",
+      name: "Pull tasks due today into this daily note",
+      icon: "calendar-check",
+      editorCallback: (editor, view) => {
+        this.pullTasksDueTodayIntoDailyNote(editor, view);
+      }
+    });
+
+    this.addCommand({
       id: "sort-focused-task-list",
       name: "Sort task list",
       icon: "arrow-down-up",
@@ -543,6 +552,88 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
   getTaskDueDate(line) {
     const match = line.match(/(?:📅\s*|due::\s*)(\d{4}-\d{2}-\d{2})/i);
     return match ? match[1] : null;
+  }
+
+  getDailyNoteDate(file) {
+    if (!file || file.path !== this.getDailyNotePath(file.basename)) {
+      return null;
+    }
+
+    return /^\d{4}-\d{2}-\d{2}$/.test(file.basename) ? file.basename : null;
+  }
+
+  removeTaskLines(content, lineNumbers) {
+    const lines = content.split(/\r?\n/);
+    const linesToRemove = new Set(lineNumbers);
+    return lines.filter((line, index) => !linesToRemove.has(index)).join("\n");
+  }
+
+  async pullTasksDueTodayIntoDailyNote(editor, view) {
+    if (!(view instanceof MarkdownView) || !view.file) {
+      new Notice("Focus a daily note first.");
+      return;
+    }
+
+    const dailyNoteDate = this.getDailyNoteDate(view.file);
+    if (!dailyNoteDate) {
+      new Notice("The focused file is not a configured daily note.");
+      return;
+    }
+
+    const tasksByFile = new Map();
+    let totalTasks = 0;
+
+    for (const file of this.app.vault.getMarkdownFiles()) {
+      if (file.path === view.file.path || !this.isManagedVaultPath(file.path)) {
+        continue;
+      }
+
+      const content = await this.app.vault.cachedRead(file);
+      const lines = content.split(/\r?\n/);
+      const matchingLines = [];
+
+      lines.forEach((line, lineNumber) => {
+        if (this.isIncompleteTaskLine(line) && this.getTaskDueDate(line) === dailyNoteDate) {
+          matchingLines.push({ line, lineNumber });
+        }
+      });
+
+      if (matchingLines.length) {
+        tasksByFile.set(file, { content, matchingLines });
+        totalTasks += matchingLines.length;
+      }
+    }
+
+    if (!totalTasks) {
+      new Notice(`No open tasks due ${dailyNoteDate} found outside this daily note.`);
+      return;
+    }
+
+    const confirmed = await new ConfirmModal(this.app, {
+      title: "Pull tasks into this daily note?",
+      message: `This will move ${totalTasks} open task(s) due ${dailyNoteDate} to the current cursor location in ${view.file.path}.`,
+      ctaText: "Move"
+    }).waitForResult();
+
+    if (!confirmed) {
+      return;
+    }
+
+    const tasks = [];
+    for (const [file, { content, matchingLines }] of tasksByFile.entries()) {
+      tasks.push(...matchingLines.map(({ line }) => line));
+      const updated = this.removeTaskLines(
+        content,
+        matchingLines.map(({ lineNumber }) => lineNumber)
+      );
+      await this.app.vault.modify(file, updated);
+    }
+
+    const cursor = editor.getCursor();
+    const inserted = `${tasks.join("\n")}\n`;
+    editor.replaceRange(inserted, { line: cursor.line, ch: 0 }, { line: cursor.line, ch: 0 });
+    editor.setCursor({ line: cursor.line + tasks.length, ch: 0 });
+    new Notice(`Moved ${totalTasks} open task(s) due ${dailyNoteDate} into this daily note.`);
   }
 
   async appendTaskToDailyNote(date, taskLine) {
