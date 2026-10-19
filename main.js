@@ -692,34 +692,89 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
     );
   }
 
+  getSelectedEditorLineNumbers(editor) {
+    const selections = typeof editor.listSelections === "function"
+      ? editor.listSelections()
+      : [];
+    if (!selections.length) {
+      return [editor.getCursor().line];
+    }
+
+    const selection = selections[0];
+    if (selection.anchor.line === selection.head.line && selection.anchor.ch === selection.head.ch) {
+      return [editor.getCursor().line];
+    }
+
+    const start = selection.anchor.line < selection.head.line
+      || (selection.anchor.line === selection.head.line && selection.anchor.ch < selection.head.ch)
+      ? selection.anchor
+      : selection.head;
+    const end = start === selection.anchor ? selection.head : selection.anchor;
+    const endLine = end.ch === 0 && end.line > start.line ? end.line - 1 : end.line;
+    const lineNumbers = [];
+    for (let lineNumber = start.line; lineNumber <= endLine; lineNumber += 1) {
+      lineNumbers.push(lineNumber);
+    }
+    return lineNumbers;
+  }
+
   async moveFocusedTaskToDueDateDailyNote(editor, view) {
     if (!(view instanceof MarkdownView) || !view.file) {
       new Notice("Focus a Markdown task first.");
       return;
     }
 
-    const cursor = editor.getCursor();
-    const taskLine = editor.getLine(cursor.line);
-    if (!this.isIncompleteTaskLine(taskLine)) {
-      new Notice("The focused line is not an incomplete task.");
+    const selectedLineNumbers = this.getSelectedEditorLineNumbers(editor);
+    const tasksByDate = new Map();
+    const alreadyInDueDateNote = [];
+    let skipped = 0;
+
+    for (const lineNumber of selectedLineNumbers) {
+      const taskLine = editor.getLine(lineNumber);
+      if (!this.isIncompleteTaskLine(taskLine)) {
+        skipped += 1;
+        continue;
+      }
+
+      const dueDate = this.getTaskDueDate(taskLine);
+      if (!dueDate) {
+        skipped += 1;
+        continue;
+      }
+
+      if (this.getDailyNotePath(dueDate) === view.file.path) {
+        alreadyInDueDateNote.push(lineNumber);
+        continue;
+      }
+
+      if (!tasksByDate.has(dueDate)) {
+        tasksByDate.set(dueDate, []);
+      }
+      tasksByDate.get(dueDate).push({ line: taskLine, lineNumber });
+    }
+
+    const tasks = [...tasksByDate.values()].flat();
+    if (!tasks.length) {
+      if (selectedLineNumbers.length > 1) {
+        new Notice("No selected incomplete tasks with due dates need moving.");
+      } else if (alreadyInDueDateNote.length) {
+        new Notice("This task is already in its due-date daily note.");
+      } else if (skipped) {
+        new Notice("The selected line is not an incomplete task with a due date.");
+      }
       return;
     }
 
-    const dueDate = this.getTaskDueDate(taskLine);
-    if (!dueDate) {
-      new Notice("The focused task has no due date; nothing was moved.");
-      return;
-    }
-
-    const targetPath = this.getDailyNotePath(dueDate);
-    if (targetPath === view.file.path) {
-      new Notice(`This task is already in its due-date daily note (${dueDate}).`);
-      return;
-    }
+    const destinationSummary = [...tasksByDate.entries()]
+      .map(([date, dateTasks]) => `${date}: ${dateTasks.length} task(s)`)
+      .join("\n");
 
     const confirmed = await new ConfirmModal(this.app, {
-      title: "Move task to its due-date daily note?",
-      message: `The focused task will be removed from ${view.file.path} and appended to ${targetPath}.`,
+      title: selectedLineNumbers.length > 1
+        ? "Move selected tasks to due-date notes?"
+        : "Move task to its due-date daily note?",
+      message: `${tasks.length} task(s) will be removed from ${view.file.path} and appended to:
+${destinationSummary}`,
       ctaText: "Move"
     }).waitForResult();
 
@@ -728,12 +783,23 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
     }
 
     try {
-      await this.appendTaskToDailyNote(dueDate, taskLine);
-      this.removeFocusedEditorLine(editor, cursor.line);
-      new Notice(`Moved task to the ${dueDate} daily note.`);
+      for (const [dueDate, dateTasks] of tasksByDate.entries()) {
+        for (const { line } of dateTasks) {
+          await this.appendTaskToDailyNote(dueDate, line);
+        }
+      }
+
+      for (const lineNumber of tasks.map(({ lineNumber }) => lineNumber).sort((a, b) => b - a)) {
+        this.removeFocusedEditorLine(editor, lineNumber);
+      }
+
+      const skippedMessage = skipped + alreadyInDueDateNote.length
+        ? ` Skipped ${skipped + alreadyInDueDateNote.length} line(s).`
+        : "";
+      new Notice(`Moved ${tasks.length} task(s) to their due-date daily note(s).${skippedMessage}`);
     } catch (error) {
-      console.error("Could not move focused task to daily note:", error);
-      new Notice(`Could not move task to ${targetPath}.`);
+      console.error("Could not move task(s) to daily note(s):", error);
+      new Notice("Could not move the selected task(s) to their daily note(s).", 8000);
     }
   }
 

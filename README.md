@@ -88,7 +88,7 @@ The focused task-list command works on the uninterrupted block of `- [ ]` and `-
 
 The focused due-date command moves the current task’s `📅 YYYY-MM-DD` or `due:: YYYY-MM-DD` marker to tomorrow. If the task has no due date, it adds `📅 YYYY-MM-DD` for tomorrow.
 
-The focused task relocation command moves the incomplete task under the cursor to the daily note for its `📅 YYYY-MM-DD` or `due:: YYYY-MM-DD` date. Tasks without a supported due date are left unchanged. The daily note folder setting controls where the destination note is created.
+The task relocation command moves the focused incomplete task, or all selected incomplete tasks, to the daily note for each task's `📅 YYYY-MM-DD` or `due:: YYYY-MM-DD` date. Tasks without a supported due date are left unchanged. The daily note folder setting controls where destination notes are created.
 
 The daily-note pull command must be run from a configured `YYYY-MM-DD.md` daily note. It moves all incomplete tasks with that note's date as their `📅 YYYY-MM-DD` or `due:: YYYY-MM-DD` date to the current cursor location and removes them from their original files.
 
