@@ -475,23 +475,30 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
     const taskLines = [];
     for (let lineNumber = startLine; lineNumber <= endLine; lineNumber += 1) {
       const line = editor.getLine(lineNumber);
+      const status = this.getTaskStatus(line);
+      const dueDate = this.getTaskDueDate(line);
       taskLines.push({
         line,
         originalIndex: lineNumber - startLine,
-        status: this.getTaskStatus(line),
-        priority: this.getTaskStatus(line) === "completed"
+        status,
+        dueDate,
+        priority: status === "completed"
           ? 0
-          : this.hasTaskDueDate(line)
-            ? 1
-            : 2
+          : dueDate
+            ? 2
+            : 1
       });
     }
 
-    const sortedLines = [
-      ...taskLines.filter((task) => task.priority === 0),
-      ...taskLines.filter((task) => task.priority === 1),
-      ...taskLines.filter((task) => task.priority === 2)
-    ];
+    const sortedLines = [...taskLines].sort((a, b) => {
+      if (a.priority !== b.priority) {
+        return a.priority - b.priority;
+      }
+      if (a.priority === 2 && a.dueDate !== b.dueDate) {
+        return a.dueDate.localeCompare(b.dueDate);
+      }
+      return a.originalIndex - b.originalIndex;
+    });
     const changed = sortedLines.some((task, index) => task.originalIndex !== index);
     if (!changed) {
       new Notice("This task list is already sorted.");
@@ -509,7 +516,7 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
     const newCursorLine = startLine + focusedTask;
     const newCursorCh = Math.min(cursor.ch, editor.getLine(newCursorLine).length);
     editor.setCursor({ line: newCursorLine, ch: newCursorCh });
-    new Notice("Sorted task list: done, due, then other tasks.");
+    new Notice("Sorted task list: done, undated, then due by date.");
   }
 
   hasTaskDueDate(line) {

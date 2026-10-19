@@ -84,7 +84,7 @@ After enabling the plugin in Obsidian, these commands are available from the com
 
 Each destructive action shows a confirmation modal before changes are applied.
 
-The focused task-list command works on the uninterrupted block of `- [ ]` and `- [x]` lines containing the cursor. It stably orders completed tasks first, incomplete tasks with a supported due date second, and other incomplete tasks last. Other lines are boundaries and are not changed.
+The focused task-list command works on the uninterrupted block of `- [ ]` and `- [x]` lines containing the cursor. It stably orders completed tasks first, incomplete tasks without a due date second, and incomplete tasks with a supported due date last, sorting the dated tasks by due date ascending. Other lines are boundaries and are not changed.
 
 The focused due-date command moves the current task’s `📅 YYYY-MM-DD` or `due:: YYYY-MM-DD` marker to tomorrow. If the task has no due date, it adds `📅 YYYY-MM-DD` for tomorrow.
 

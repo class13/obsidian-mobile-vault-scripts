@@ -1,0 +1,2 @@
+- Until further notice, user-requested repository changes should be committed directly on the main branch.
+- Code: `main.js` `README.md`
