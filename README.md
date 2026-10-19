@@ -72,15 +72,15 @@ Tasks that already include either `📅 YYYY-MM-DD` or `due:: YYYY-MM-DD` are le
 
 After enabling the plugin in Obsidian, these commands are available from the command palette:
 
-- `Mobile Vault Scripts: Consolidate voice notes into daily notes`
-- `Mobile Vault Scripts: Delete empty or whitespace-only files`
-- `Mobile Vault Scripts: Remove completed tasks from markdown files`
-- `Mobile Vault Scripts: Move overdue task due dates to today`
-- `Mobile Vault Scripts: Assign missing task due dates to today`
-- `Mobile Vault Scripts: Move task due date to tomorrow`
-- `Mobile Vault Scripts: Move focused task to its due-date daily note`
-- `Mobile Vault Scripts: Pull tasks due today into this daily note`
-- `Mobile Vault Scripts: Sort task list`
+- `Mobile Vault Scripts: Consolidate voice notes`
+- `Mobile Vault Scripts: Delete empty files`
+- `Mobile Vault Scripts: Remove completed tasks`
+- `Mobile Vault Scripts: Move overdue tasks to today`
+- `Mobile Vault Scripts: Date undated tasks today`
+- `Mobile Vault Scripts: Move task to tomorrow`
+- `Mobile Vault Scripts: Move task to due-date note`
+- `Mobile Vault Scripts: Pull today's tasks`
+- `Mobile Vault Scripts: Sort tasks`
 
 Each destructive action shows a confirmation modal before changes are applied.
 

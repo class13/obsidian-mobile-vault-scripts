@@ -142,7 +142,7 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
 
     this.addCommand({
       id: "consolidate-voice-notes",
-      name: "Consolidate voice notes into daily notes",
+      name: "Consolidate voice notes",
       icon: "microphone",
       callback: async () => {
         await this.runVoiceNoteConsolidation();
@@ -151,7 +151,7 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
 
     this.addCommand({
       id: "delete-empty-files",
-      name: "Delete empty or whitespace-only files",
+      name: "Delete empty files",
       icon: "file-x",
       callback: async () => {
         await this.deleteEmptyFiles();
@@ -160,7 +160,7 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
 
     this.addCommand({
       id: "remove-completed-tasks",
-      name: "Remove completed tasks from markdown files",
+      name: "Remove completed tasks",
       icon: "check-check",
       callback: async () => {
         await this.removeCompletedTasks();
@@ -169,7 +169,7 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
 
     this.addCommand({
       id: "move-overdue-task-due-dates-to-today",
-      name: "Move overdue task due dates to today",
+      name: "Move overdue tasks to today",
       icon: "calendar-clock",
       callback: async () => {
         await this.moveOverdueTaskDueDatesToToday();
@@ -178,7 +178,7 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
 
     this.addCommand({
       id: "assign-missing-task-due-dates-to-today",
-      name: "Assign missing task due dates to today",
+      name: "Date undated tasks today",
       icon: "calendar-plus",
       callback: async () => {
         await this.assignMissingTaskDueDatesToToday();
@@ -187,7 +187,7 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
 
     this.addCommand({
       id: "move-focused-task-due-date-to-tomorrow",
-      name: "Move task due date to tomorrow",
+      name: "Move task to tomorrow",
       icon: "calendar-arrow-up",
       editorCallback: (editor, view) => {
         this.moveFocusedTaskDueDateToTomorrow(editor, view);
@@ -196,7 +196,7 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
 
     this.addCommand({
       id: "move-focused-task-to-due-date-daily-note",
-      name: "Move focused task to its due-date daily note",
+      name: "Move task to due-date note",
       icon: "calendar-arrow-down",
       editorCallback: (editor, view) => {
         this.moveFocusedTaskToDueDateDailyNote(editor, view);
@@ -205,7 +205,7 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
 
     this.addCommand({
       id: "pull-tasks-due-today-into-daily-note",
-      name: "Pull tasks due today into this daily note",
+      name: "Pull today's tasks",
       icon: "calendar-check",
       editorCallback: (editor, view) => {
         this.pullTasksDueTodayIntoDailyNote(editor, view);
@@ -214,7 +214,7 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
 
     this.addCommand({
       id: "sort-focused-task-list",
-      name: "Sort task list",
+      name: "Sort tasks",
       icon: "arrow-down-up",
       editorCallback: (editor, view) => {
         this.sortFocusedTaskList(editor, view);
