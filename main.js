@@ -195,6 +195,15 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
     });
 
     this.addCommand({
+      id: "move-focused-task-to-due-date-daily-note",
+      name: "Move focused task to its due-date daily note",
+      icon: "calendar-arrow-down",
+      editorCallback: (editor, view) => {
+        this.moveFocusedTaskToDueDateDailyNote(editor, view);
+      }
+    });
+
+    this.addCommand({
       id: "sort-focused-task-list",
       name: "Sort task list",
       icon: "arrow-down-up",
@@ -529,6 +538,105 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
     }
 
     return { updated: `${line} 📅 ${today}`, changed: true };
+  }
+
+  getTaskDueDate(line) {
+    const match = line.match(/(?:📅\s*|due::\s*)(\d{4}-\d{2}-\d{2})/i);
+    return match ? match[1] : null;
+  }
+
+  async appendTaskToDailyNote(date, taskLine) {
+    const targetPath = this.getDailyNotePath(date);
+    const folderPath = targetPath.includes("/")
+      ? targetPath.substring(0, targetPath.lastIndexOf("/"))
+      : "";
+    await this.ensureFolderExists(folderPath);
+
+    const existing = this.app.vault.getAbstractFileByPath(targetPath);
+    if (existing instanceof TFile) {
+      const currentContent = await this.app.vault.read(existing);
+      const separator = currentContent ? (currentContent.endsWith("\n") ? "" : "\n") : "";
+      await this.app.vault.modify(existing, `${currentContent}${separator}${taskLine}\n`);
+      return;
+    }
+
+    if (existing) {
+      throw new Error(`Daily note path is not a file: ${targetPath}`);
+    }
+
+    await this.app.vault.create(targetPath, `${taskLine}\n`);
+  }
+
+  removeFocusedEditorLine(editor, lineNumber) {
+    const lastLine = editor.lastLine();
+    if (lastLine === 0) {
+      editor.replaceRange(
+        "",
+        { line: lineNumber, ch: 0 },
+        { line: lineNumber, ch: editor.getLine(lineNumber).length }
+      );
+      return;
+    }
+
+    if (lineNumber < lastLine) {
+      editor.replaceRange(
+        "",
+        { line: lineNumber, ch: 0 },
+        { line: lineNumber + 1, ch: 0 }
+      );
+      return;
+    }
+
+    editor.replaceRange(
+      "",
+      { line: lineNumber - 1, ch: editor.getLine(lineNumber - 1).length },
+      { line: lineNumber, ch: editor.getLine(lineNumber).length }
+    );
+  }
+
+  async moveFocusedTaskToDueDateDailyNote(editor, view) {
+    if (!(view instanceof MarkdownView) || !view.file) {
+      new Notice("Focus a Markdown task first.");
+      return;
+    }
+
+    const cursor = editor.getCursor();
+    const taskLine = editor.getLine(cursor.line);
+    if (!this.isIncompleteTaskLine(taskLine)) {
+      new Notice("The focused line is not an incomplete task.");
+      return;
+    }
+
+    const dueDate = this.getTaskDueDate(taskLine);
+    if (!dueDate) {
+      new Notice("The focused task has no due date; nothing was moved.");
+      return;
+    }
+
+    const targetPath = this.getDailyNotePath(dueDate);
+    if (targetPath === view.file.path) {
+      new Notice(`This task is already in its due-date daily note (${dueDate}).`);
+      return;
+    }
+
+    const confirmed = await new ConfirmModal(this.app, {
+      title: "Move task to its due-date daily note?",
+      message: `The focused task will be removed from ${view.file.path} and appended to ${targetPath}.`,
+      ctaText: "Move"
+    }).waitForResult();
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await this.appendTaskToDailyNote(dueDate, taskLine);
+      this.removeFocusedEditorLine(editor, cursor.line);
+      new Notice(`Moved task to the ${dueDate} daily note.`);
+    } catch (error) {
+      console.error("Could not move focused task to daily note:", error);
+      new Notice(`Could not move task to ${targetPath}.`);
+    }
   }
 
   moveFocusedTaskDueDateToTomorrow(editor, view) {

@@ -10,6 +10,7 @@ It currently supports:
 - Removing completed Markdown tasks
 - Moving overdue task due dates to today
 - Assigning missing task due dates to today
+- Moving a focused task to the daily note matching its due date
 
 ## What It Does
 
@@ -77,6 +78,7 @@ After enabling the plugin in Obsidian, these commands are available from the com
 - `Mobile Vault Scripts: Move overdue task due dates to today`
 - `Mobile Vault Scripts: Assign missing task due dates to today`
 - `Mobile Vault Scripts: Move task due date to tomorrow`
+- `Mobile Vault Scripts: Move focused task to its due-date daily note`
 - `Mobile Vault Scripts: Sort task list`
 
 Each destructive action shows a confirmation modal before changes are applied.
@@ -84,6 +86,8 @@ Each destructive action shows a confirmation modal before changes are applied.
 The focused task-list command works on the uninterrupted block of `- [ ]` and `- [x]` lines containing the cursor. It stably orders completed tasks first, incomplete tasks with a supported due date second, and other incomplete tasks last. Other lines are boundaries and are not changed.
 
 The focused due-date command moves the current task’s `📅 YYYY-MM-DD` or `due:: YYYY-MM-DD` marker to tomorrow. If the task has no due date, it adds `📅 YYYY-MM-DD` for tomorrow.
+
+The focused task relocation command moves the incomplete task under the cursor to the daily note for its `📅 YYYY-MM-DD` or `due:: YYYY-MM-DD` date. Tasks without a supported due date are left unchanged. The daily note folder setting controls where the destination note is created.
 
 ## Settings
 
