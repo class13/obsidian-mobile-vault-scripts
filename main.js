@@ -221,6 +221,24 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
       }
     });
 
+    this.addCommand({
+      id: "move-focused-task-to-top-of-unfinished-tasks",
+      name: "Move task to top of unfinished tasks",
+      icon: "arrow-up-to-line",
+      editorCallback: (editor, view) => {
+        this.moveFocusedTaskToIncompleteBoundary(editor, view, "top");
+      }
+    });
+
+    this.addCommand({
+      id: "move-focused-task-to-bottom-of-unfinished-tasks",
+      name: "Move task to bottom of unfinished tasks",
+      icon: "arrow-down-to-line",
+      editorCallback: (editor, view) => {
+        this.moveFocusedTaskToIncompleteBoundary(editor, view, "bottom");
+      }
+    });
+
     this.addSettingTab(new MobileVaultScriptsSettingTab(this.app, this));
   }
 
@@ -442,11 +460,85 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
   }
 
   getTaskStatus(line) {
-    const match = line.match(/^\s*-\s+\[([ xX])\]/);
+    const match = line.match(/^\s*[-*]\s+\[([ xX])\]/);
     if (!match) {
       return null;
     }
     return match[1].toLowerCase() === "x" ? "completed" : "incomplete";
+  }
+
+  moveFocusedTaskToIncompleteBoundary(editor, view, boundary) {
+    if (!(view instanceof MarkdownView)) {
+      new Notice("Focus a Markdown task list first.");
+      return;
+    }
+
+    const cursor = editor.getCursor();
+    const currentLine = editor.getLine(cursor.line);
+    if (!this.isIncompleteTaskLine(currentLine)) {
+      new Notice("Focus an incomplete task.");
+      return;
+    }
+
+    let startLine = cursor.line;
+    while (startLine > 0 && this.getTaskStatus(editor.getLine(startLine - 1))) {
+      startLine -= 1;
+    }
+
+    let endLine = cursor.line;
+    while (endLine < editor.lastLine() && this.getTaskStatus(editor.getLine(endLine + 1))) {
+      endLine += 1;
+    }
+
+    const taskLines = [];
+    for (let lineNumber = startLine; lineNumber <= endLine; lineNumber += 1) {
+      taskLines.push({
+        line: editor.getLine(lineNumber),
+        incomplete: this.isIncompleteTaskLine(editor.getLine(lineNumber))
+      });
+    }
+
+    const currentIndex = cursor.line - startLine;
+    const incompleteIndexesBeforeMove = taskLines
+      .map((task, index) => (task.incomplete ? index : -1))
+      .filter((index) => index !== -1);
+    const boundaryIndex = boundary === "top"
+      ? incompleteIndexesBeforeMove[0]
+      : incompleteIndexesBeforeMove[incompleteIndexesBeforeMove.length - 1];
+    if (boundaryIndex === currentIndex) {
+      new Notice(`This task is already at the ${boundary} of the unfinished tasks.`);
+      return;
+    }
+
+    const remainingLines = [...taskLines];
+    const [focusedTask] = remainingLines.splice(currentIndex, 1);
+    const incompleteIndexes = remainingLines
+      .map((task, index) => (task.incomplete ? index : -1))
+      .filter((index) => index !== -1);
+
+    if (!incompleteIndexes.length) {
+      new Notice("This is the only unfinished task in the list.");
+      return;
+    }
+
+    const targetIndex = boundary === "top"
+      ? incompleteIndexes[0]
+      : incompleteIndexes[incompleteIndexes.length - 1] + 1;
+
+    remainingLines.splice(targetIndex, 0, focusedTask);
+    const replacement = remainingLines.map((task) => task.line).join("\n");
+    editor.replaceRange(
+      replacement,
+      { line: startLine, ch: 0 },
+      { line: endLine, ch: editor.getLine(endLine).length }
+    );
+
+    const newCursorLine = startLine + targetIndex;
+    editor.setCursor({
+      line: newCursorLine,
+      ch: Math.min(cursor.ch, editor.getLine(newCursorLine).length)
+    });
+    new Notice(`Moved task to the ${boundary} of the unfinished tasks.`);
   }
 
   sortFocusedTaskList(editor, view) {

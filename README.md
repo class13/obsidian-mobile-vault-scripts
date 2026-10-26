@@ -11,6 +11,7 @@ It currently supports:
 - Moving overdue task due dates to today
 - Assigning missing task due dates to today
 - Moving a focused task to the daily note matching its due date
+- Moving a focused task to the top or bottom of unfinished tasks
 
 ## What It Does
 
@@ -81,10 +82,14 @@ After enabling the plugin in Obsidian, these commands are available from the com
 - `Mobile Vault Scripts: Move task to due-date note`
 - `Mobile Vault Scripts: Pull today's tasks`
 - `Mobile Vault Scripts: Sort tasks`
+- `Mobile Vault Scripts: Move task to top of unfinished tasks`
+- `Mobile Vault Scripts: Move task to bottom of unfinished tasks`
 
 Each destructive action shows a confirmation modal before changes are applied.
 
 The focused task-list command works on the uninterrupted block of `- [ ]` and `- [x]` lines containing the cursor. It stably orders completed tasks first, incomplete tasks without a due date second, and incomplete tasks with a supported due date last, sorting the dated tasks by due date ascending. Other lines are boundaries and are not changed.
+
+The unfinished-task commands work on the uninterrupted task block containing the cursor. They move the focused incomplete task to the first or last incomplete task position in that block, while keeping completed tasks in the same block and leaving other lines unchanged.
 
 The focused due-date command moves the current task’s `📅 YYYY-MM-DD` or `due:: YYYY-MM-DD` marker to tomorrow. If the task has no due date, it adds `📅 YYYY-MM-DD` for tomorrow.
 
