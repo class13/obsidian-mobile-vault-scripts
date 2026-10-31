@@ -28,6 +28,8 @@ The first command validates JavaScript syntax; the second catches whitespace err
 
 Use four-space indentation, semicolons, double-quoted strings, and trailing commas only where the existing style already uses them. Keep the CommonJS format required by Obsidian (`require("obsidian")` and `module.exports`). Use `PascalCase` for classes, `camelCase` for methods and variables, and kebab-case for command IDs. Preserve the plugin’s mobile-safe, confirmation-before-destructive-action behavior.
 
+Visible command names should be short, imperative, and verb-first. Omit redundant words when the context is obvious, describe the user-visible action directly, prefer precise terms such as “due date” over vague terms like “move,” and keep related commands parallel.
+
 ## Testing Guidelines
 
 There is no automated test framework or coverage requirement. Manually test changes in a disposable Obsidian vault, including missing folders, empty files, invalid filenames, completed versus incomplete tasks, and rerunning commands to check for duplicate or unintended changes.
@@ -41,3 +43,7 @@ Pull requests should explain the user-visible behavior, identify affected files,
 ## Security & Configuration Tips
 
 Maintenance commands modify or delete vault files. Test destructive operations on a backup or disposable vault first, and avoid committing personal vault content or `.obsidian` data.
+
+## Memory and Preferences
+
+When the user asks to remember something, record it in this `AGENTS.md` file as a repository instruction.

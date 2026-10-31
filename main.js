@@ -168,26 +168,17 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
     });
 
     this.addCommand({
-      id: "move-overdue-task-due-dates-to-today",
-      name: "Move overdue tasks to today",
+      id: "move-task-due-dates-to-today",
+      name: "Set due dates to today",
       icon: "calendar-clock",
       callback: async () => {
-        await this.moveOverdueTaskDueDatesToToday();
-      }
-    });
-
-    this.addCommand({
-      id: "assign-missing-task-due-dates-to-today",
-      name: "Date undated tasks today",
-      icon: "calendar-plus",
-      callback: async () => {
-        await this.assignMissingTaskDueDatesToToday();
+        await this.moveTaskDueDatesToToday();
       }
     });
 
     this.addCommand({
       id: "move-focused-task-due-date-to-tomorrow",
-      name: "Move task to tomorrow",
+      name: "Set due date to tomorrow",
       icon: "calendar-arrow-up",
       editorCallback: (editor, view) => {
         this.moveFocusedTaskDueDateToTomorrow(editor, view);
@@ -196,7 +187,7 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
 
     this.addCommand({
       id: "move-focused-task-to-due-date-daily-note",
-      name: "Move task to due-date note",
+      name: "Move to due-date note",
       icon: "calendar-arrow-down",
       editorCallback: (editor, view) => {
         this.moveFocusedTaskToDueDateDailyNote(editor, view);
@@ -223,7 +214,7 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
 
     this.addCommand({
       id: "move-focused-task-to-top-of-unfinished-tasks",
-      name: "Move task to top of unfinished tasks",
+      name: "Move to top of unfinished",
       icon: "arrow-up-to-line",
       editorCallback: (editor, view) => {
         this.moveFocusedTaskToIncompleteBoundary(editor, view, "top");
@@ -232,7 +223,7 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
 
     this.addCommand({
       id: "move-focused-task-to-bottom-of-unfinished-tasks",
-      name: "Move task to bottom of unfinished tasks",
+      name: "Move to bottom of unfinished",
       icon: "arrow-down-to-line",
       editorCallback: (editor, view) => {
         this.moveFocusedTaskToIncompleteBoundary(editor, view, "bottom");
@@ -564,6 +555,7 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
       endLine += 1;
     }
 
+    const today = this.getTodayDateString();
     const taskLines = [];
     for (let lineNumber = startLine; lineNumber <= endLine; lineNumber += 1) {
       const line = editor.getLine(lineNumber);
@@ -576,9 +568,9 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
         dueDate,
         priority: status === "completed"
           ? 0
-          : dueDate
-            ? 2
-            : 1
+          : !dueDate || dueDate === today
+            ? 1
+            : 2
       });
     }
 
@@ -608,7 +600,7 @@ module.exports = class MobileVaultScriptsPlugin extends Plugin {
     const newCursorLine = startLine + focusedTask;
     const newCursorCh = Math.min(cursor.ch, editor.getLine(newCursorLine).length);
     editor.setCursor({ line: newCursorLine, ch: newCursorCh });
-    new Notice("Sorted task list: done, undated, then due by date.");
+    new Notice("Sorted task list: done, undated or due today, then due by date.");
   }
 
   hasTaskDueDate(line) {
@@ -927,36 +919,32 @@ ${destinationSummary}`,
     new Notice(`Set task due date to ${tomorrow}.`);
   }
 
-  updateOverdueTaskDueDates(content, today) {
-    let changedTasks = 0;
+  updateTaskDueDatesToToday(content, today) {
+    let overdueTasks = 0;
+    let undatedTasks = 0;
     const updated = content
       .split(/\r?\n/)
       .map((line) => {
-        const result = this.updateOverdueTaskLineDueDate(line, today);
-        if (result.changed) {
-          changedTasks += 1;
+        const overdueResult = this.updateOverdueTaskLineDueDate(line, today);
+        if (overdueResult.changed) {
+          overdueTasks += 1;
+          return overdueResult.updated;
         }
-        return result.updated;
+
+        const undatedResult = this.addDueDateToUndatedTaskLine(line, today);
+        if (undatedResult.changed) {
+          undatedTasks += 1;
+        }
+        return undatedResult.updated;
       })
       .join("\n");
 
-    return { updated, changedTasks };
-  }
-
-  assignMissingTaskDueDates(content, today) {
-    let changedTasks = 0;
-    const updated = content
-      .split(/\r?\n/)
-      .map((line) => {
-        const result = this.addDueDateToUndatedTaskLine(line, today);
-        if (result.changed) {
-          changedTasks += 1;
-        }
-        return result.updated;
-      })
-      .join("\n");
-
-    return { updated, changedTasks };
+    return {
+      updated,
+      changedTasks: overdueTasks + undatedTasks,
+      overdueTasks,
+      undatedTasks
+    };
   }
 
   async removeCompletedTasks() {
@@ -1002,10 +990,11 @@ ${destinationSummary}`,
     new Notice(`Removed ${totalRemoved} completed task(s) from ${affectedFiles.length} file(s).`, 8000);
   }
 
-  async moveOverdueTaskDueDatesToToday() {
+  async moveTaskDueDatesToToday() {
     const today = this.getTodayDateString();
     const affectedFiles = [];
-    let totalUpdated = 0;
+    let totalOverdue = 0;
+    let totalUndated = 0;
 
     for (const file of this.app.vault.getMarkdownFiles()) {
       if (!this.isManagedVaultPath(file.path)) {
@@ -1013,25 +1002,31 @@ ${destinationSummary}`,
       }
 
       const original = await this.app.vault.cachedRead(file);
-      const { updated, changedTasks } = this.updateOverdueTaskDueDates(original, today);
+      const {
+        updated,
+        changedTasks,
+        overdueTasks,
+        undatedTasks
+      } = this.updateTaskDueDatesToToday(original, today);
       if (!changedTasks) {
         continue;
       }
 
       affectedFiles.push({ file, updated });
-      totalUpdated += changedTasks;
+      totalOverdue += overdueTasks;
+      totalUndated += undatedTasks;
     }
 
     if (!affectedFiles.length) {
-      new Notice(`No overdue incomplete tasks due before ${today} found.`);
+      new Notice(`No overdue or undated incomplete tasks found for ${today}.`);
       return;
     }
 
     const preview = affectedFiles.slice(0, 5).map(({ file }) => file.path).join("\n");
     const extra = affectedFiles.length > 5 ? `\nAnd ${affectedFiles.length - 5} more.` : "";
     const confirmed = await new ConfirmModal(this.app, {
-      title: "Move overdue task due dates to today?",
-      message: `This will change the due date to ${today} for ${totalUpdated} incomplete task(s) in ${affectedFiles.length} markdown file(s).\n\n${preview}${extra}`,
+      title: "Move overdue and undated tasks to today?",
+      message: `This will move ${totalOverdue} overdue task(s) and assign ${today} to ${totalUndated} undated task(s) across ${affectedFiles.length} markdown file(s).\n\n${preview}${extra}`,
       ctaText: "Update"
     }).waitForResult();
 
@@ -1043,50 +1038,6 @@ ${destinationSummary}`,
       await this.app.vault.modify(file, updated);
     }
 
-    new Notice(`Updated ${totalUpdated} overdue task due date(s) to ${today} in ${affectedFiles.length} file(s).`, 8000);
-  }
-
-  async assignMissingTaskDueDatesToToday() {
-    const today = this.getTodayDateString();
-    const affectedFiles = [];
-    let totalUpdated = 0;
-
-    for (const file of this.app.vault.getMarkdownFiles()) {
-      if (!this.isManagedVaultPath(file.path)) {
-        continue;
-      }
-
-      const original = await this.app.vault.cachedRead(file);
-      const { updated, changedTasks } = this.assignMissingTaskDueDates(original, today);
-      if (!changedTasks) {
-        continue;
-      }
-
-      affectedFiles.push({ file, updated });
-      totalUpdated += changedTasks;
-    }
-
-    if (!affectedFiles.length) {
-      new Notice(`No incomplete tasks without due dates found for ${today}.`);
-      return;
-    }
-
-    const preview = affectedFiles.slice(0, 5).map(({ file }) => file.path).join("\n");
-    const extra = affectedFiles.length > 5 ? `\nAnd ${affectedFiles.length - 5} more.` : "";
-    const confirmed = await new ConfirmModal(this.app, {
-      title: "Assign missing task due dates to today?",
-      message: `This will add the due date ${today} to ${totalUpdated} incomplete task(s) in ${affectedFiles.length} markdown file(s).\n\n${preview}${extra}`,
-      ctaText: "Update"
-    }).waitForResult();
-
-    if (!confirmed) {
-      return;
-    }
-
-    for (const { file, updated } of affectedFiles) {
-      await this.app.vault.modify(file, updated);
-    }
-
-    new Notice(`Assigned ${today} to ${totalUpdated} incomplete task due date(s) in ${affectedFiles.length} file(s).`, 8000);
+    new Notice(`Updated ${totalOverdue} overdue task(s) and dated ${totalUndated} undated task(s) for ${today} in ${affectedFiles.length} file(s).`, 8000);
   }
 };

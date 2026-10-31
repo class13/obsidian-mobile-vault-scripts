@@ -8,8 +8,7 @@ It currently supports:
 - Deleting processed voice note files after consolidation
 - Deleting empty or whitespace-only files
 - Removing completed Markdown tasks
-- Moving overdue task due dates to today
-- Assigning missing task due dates to today
+- Moving overdue and undated task due dates to today
 - Moving a focused task to the daily note matching its due date
 - Moving a focused task to the top or bottom of unfinished tasks
 
@@ -48,20 +47,16 @@ The plugin removes Markdown task lines that start with:
 
 Only Markdown files are modified. Files under `.obsidian/` are ignored.
 
-### Overdue due-date update
+### Task due-date update
 
-The plugin updates overdue due dates on incomplete Markdown task lines to today’s date.
+The plugin updates overdue due dates and assigns today’s date to undated incomplete Markdown task lines.
 
 Supported due-date formats:
 
 - `📅 YYYY-MM-DD`
 - `due:: YYYY-MM-DD`
 
-Only incomplete tasks are changed. Completed tasks are left alone.
-
-### Missing due-date assignment
-
-The plugin can also add today’s date to incomplete Markdown task lines that do not already have a due date.
+Only incomplete tasks are changed. Completed tasks are left alone. Tasks with a due date of today or a future date are left unchanged.
 
 It appends the due date in this format:
 
@@ -76,18 +71,17 @@ After enabling the plugin in Obsidian, these commands are available from the com
 - `Mobile Vault Scripts: Consolidate voice notes`
 - `Mobile Vault Scripts: Delete empty files`
 - `Mobile Vault Scripts: Remove completed tasks`
-- `Mobile Vault Scripts: Move overdue tasks to today`
-- `Mobile Vault Scripts: Date undated tasks today`
-- `Mobile Vault Scripts: Move task to tomorrow`
-- `Mobile Vault Scripts: Move task to due-date note`
+- `Mobile Vault Scripts: Set due dates to today`
+- `Mobile Vault Scripts: Set due date to tomorrow`
+- `Mobile Vault Scripts: Move to due-date note`
 - `Mobile Vault Scripts: Pull today's tasks`
 - `Mobile Vault Scripts: Sort tasks`
-- `Mobile Vault Scripts: Move task to top of unfinished tasks`
-- `Mobile Vault Scripts: Move task to bottom of unfinished tasks`
+- `Mobile Vault Scripts: Move to top of unfinished`
+- `Mobile Vault Scripts: Move to bottom of unfinished`
 
 Each destructive action shows a confirmation modal before changes are applied.
 
-The focused task-list command works on the uninterrupted block of `- [ ]` and `- [x]` lines containing the cursor. It stably orders completed tasks first, incomplete tasks without a due date second, and incomplete tasks with a supported due date last, sorting the dated tasks by due date ascending. Other lines are boundaries and are not changed.
+The focused task-list command works on the uninterrupted block of `- [ ]` and `- [x]` lines containing the cursor. It stably orders completed tasks first, incomplete tasks without a due date or due today second, and other incomplete tasks with a supported due date last, sorting the latter dated tasks by due date ascending. Other lines are boundaries and are not changed.
 
 The unfinished-task commands work on the uninterrupted task block containing the cursor. They move the focused incomplete task to the first or last incomplete task position in that block, while keeping completed tasks in the same block and leaving other lines unchanged.
 
@@ -143,5 +137,4 @@ There is no build step configured in this repository at the moment.
 - Voice note consolidation only processes Markdown files directly inside the configured voice notes folder.
 - Empty-file cleanup can affect non-Markdown text files if they are blank or whitespace-only.
 - Completed-task cleanup only removes lines beginning with `- [x]`; other completed task syntaxes are not currently removed.
-- Overdue due-date updates compare dates in `YYYY-MM-DD` format and only modify dates earlier than today.
-- Missing due-date assignment appends `📅 YYYY-MM-DD` to incomplete tasks that have no supported due-date marker.
+- The task due-date command compares dates in `YYYY-MM-DD` format, changes overdue dates to today, and appends `📅 YYYY-MM-DD` to incomplete tasks that have no supported due-date marker.
